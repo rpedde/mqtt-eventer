@@ -24,9 +24,10 @@
 
 #include "cfg.h"
 #include "debug.h"
+#include "lua-runtime.h"
 #include "mqtt-eventer.h"
 
-#define DEFAULT_CONFIG_FILE "/etc/mqtt-eventer.conf"
+#define DEFAULT_CONFIG_FILE "/etc/mqtt-eventer/mqtt-eventer.conf"
 
 void daemonize(void) {
     ERROR("Daemonize not implemented");
@@ -80,6 +81,11 @@ int main(int argc, char *argv[]) {
     if(background)
         daemonize();
 
+    INFO("Starting lua runtime...");
+    if(lr_init() == -1) {
+        ERROR("Error starting up lua runtime.  Aborting");
+        return EXIT_FAILURE;
+    }
 
     return(EXIT_SUCCESS);
 }

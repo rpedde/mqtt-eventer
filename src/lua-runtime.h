@@ -1,5 +1,5 @@
 /*
- * cfg.h Copyright (C) 2016 Ron Pedde <ron@pedde.com>
+ * lua-runtime.h Copyright (C) 2016 Ron Pedde <ron@pedde.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,21 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _CFG_H_
-#define _CFG_H_
+#ifndef _LUA_RUNTIME_H_
+#define _LUA_RUNTIME_H_
 
-#include <stdint.h>
+extern int lr_init(void);
+extern int lr_deinit(void);
 
-typedef struct cfg_t {
-    char *mqtt_host;
-    uint16_t mqtt_port;
-    uint16_t mqtt_keepalive;
-    char *lua_script_dir;
-} cfg_t;
-
-extern int cfg_load(char *file);
-extern void cfg_dump(void);
-
-extern cfg_t config;
-
-#endif /* _CFG_H_ */
+#endif /* _LUA_RUNTIME_H_ */

@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "debug.h"
 
@@ -33,6 +34,9 @@ void debug_vprintf(int level, char *format, va_list ap) {
         return;
 
     vfprintf(stderr, format, ap);
+
+    if(level == DBG_FATAL)
+        exit(1);
 }
 
 void debug_printf(int level, char *format, ...) {
@@ -43,4 +47,7 @@ void debug_printf(int level, char *format, ...) {
     va_start(args, format);
     vfprintf(stderr, format, args);
     va_end(args);
+
+    if(level == DBG_FATAL)
+        exit(1);
 }

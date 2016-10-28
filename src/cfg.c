@@ -16,6 +16,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <libconfig.h>
@@ -36,6 +37,7 @@ int cfg_load(char *file) {
     config.mqtt_port = 1883;
     config.mqtt_host = strdup("127.0.0.1");
     config.mqtt_keepalive = 60;
+    config.lua_script_dir = strdup("/etc/mqtt-eventer/scripts");
 
     config_init(&cfg);
     if(!config_read_file(&cfg, file)) {
@@ -47,8 +49,19 @@ int cfg_load(char *file) {
         return -1;
     }
 
-    if(config_lookup_string(&cfg, "mqtt_host", &svalue))
+    if(config_lookup_string(&cfg, "mqtt_host", &svalue)) {
+        if(config.mqtt_host)
+            free(config.mqtt_host);
+
         config.mqtt_host = strdup(svalue);
+    }
+
+    if(config_lookup_string(&cfg, "lua_script_dir", &svalue)) {
+        if(config.lua_script_dir)
+            free(config.lua_script_dir);
+
+        config.lua_script_dir = strdup(svalue);
+    }
 
     if(config_lookup_int(&cfg, "mqtt_port", &ivalue))
         config.mqtt_port = (uint16_t)ivalue;
@@ -63,4 +76,5 @@ void cfg_dump(void) {
     DEBUG("mqtt host:      %s", config.mqtt_host);
     DEBUG("mqtt port:      %d", config.mqtt_port);
     DEBUG("mqtt keepalive: %d", config.mqtt_keepalive);
+    DEBUG("script dir:     %s", config.lua_script_dir);
 }
