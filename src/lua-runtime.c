@@ -34,9 +34,6 @@
 #include "mqtt-eventer.h"
 #include "lua-runtime.h"
 
-static int lr_method_register_callback(lua_State *L);
-static int lr_method_debug(lua_State *L);
-
 /* #define XFRM(x) XDBG_ ## x, */
 /* typedef enum debug_level_t { DBG_SYMBOLS DBG_MAXVAL } debug_level_t; */
 /* #undef XFRM */
@@ -45,16 +42,38 @@ static int lr_method_debug(lua_State *L);
 char *debug_values[] = { DBG_SYMBOLS "DBG_MAXVAL" };
 #undef XRFM
 
+typedef struct queuelist_t {
+    char *provider;
+    char *queue;
+    struct queuelist_t *next;
+} queuelist_t;
+
 typedef struct script_env_t {
     char *path;
     lua_State *l;
+    queuelist_t inqueues;
+
     struct script_env_t *next;
 } script_env_t;
 
-static script_env_t lr_scripts = { NULL, NULL, NULL };
+static script_env_t lr_scripts = { NULL, NULL, { NULL, NULL, NULL }, NULL };
+
+static int lr_method_register_callback(lua_State *l);
+static int lr_method_debug(lua_State *l);
 
 static int lr_add_script(char *path);
 static lua_State *lr_newstate(char *path);
+static script_env_t *lr_script_by_state(lua_State *l);
+static void lr_lock(void);
+static void lr_unlock(void);
+
+void lr_lock(void) {
+    return;
+}
+
+void lr_unlock(void) {
+    return;
+}
 
 int lr_init(void) {
     DIR *pdir;
@@ -62,7 +81,6 @@ int lr_init(void) {
     struct dirent *pentry, *presult;
     int res, len;
     char full_path[PATH_MAX];
-
 
     DEBUG("Checking scripts in %s", config.lua_script_dir);
 
@@ -113,6 +131,19 @@ int lr_deinit(void) {
     return 0;
 }
 
+static script_env_t *lr_script_by_state(lua_State *l) {
+    script_env_t *pcurrent;
+
+    lr_lock()
+    pcurrent = lr_scripts.next;
+
+    while(pcurrent && pcurrent->l != l)
+        pcurrent = pcurrent->next;
+
+    lr_unlock();
+    return pcurrent;
+}
+
 static void lr_errstack(lua_State *l, char *prefix) {
     const char *err;
 
@@ -136,6 +167,7 @@ static int lr_add_script(char *path) {
 
     pnew->path = strdup(path);
     pnew->l = lr_newstate(path);
+    pnew->inqueues.next = NULL;
 
     if(!pnew->l) {
         ERROR("Could not create lua state");
@@ -201,18 +233,26 @@ static lua_State *lr_newstate(char *path) {
     return L;
 }
 
-static int lr_method_register_callback(lua_State *L) {
-    const char *queue = luaL_checkstring(L, 1);
-    const char *fn = luaL_checkstring(L, 2);
+static int lr_method_register_callback(lua_State *l) {
+    const char *provider = luaL_checkstring(l, 1);
+    const char *queue = luaL_checkstring(l, 2);
+    const char *fn = luaL_checkstring(l, 3);
 
-    DEBUG("Registering callback for queue %s on %s", queue, fn);
+    script_env_t *script = lr_script_by_state(l);
+    if(!script) {
+        FATAL("Could not find script state for %p", l);
+        return 0;
+    }
+
+    DEBUG("%s: Registering callback for queue %s:%s on %s",
+          script->path, provider, queue, fn);
 
     return 0;
 }
 
-static int lr_method_debug(lua_State *L) {
-    const int level = luaL_checkinteger(L, 1);
-    const char *msg = luaL_checkstring(L, 2);
+static int lr_method_debug(lua_State *l) {
+    const int level = luaL_checkinteger(l, 1);
+    const char *msg = luaL_checkstring(l, 2);
 
     debug_printf(level, "[%s] %s\n",
                  level < DBG_MAXVAL ? debug_values[level] : "UNKNOWN",
